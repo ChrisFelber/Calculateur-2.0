@@ -1,0 +1,2193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulateur d'investissement</title>
+
+<!-- PWA metadata -->
+<meta name="theme-color" content="#F6F4FE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F0C1F" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Investissement">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Visualisez l'impact des intérêts composés sur votre patrimoine.">
+<link rel="manifest" id="manifest-link">
+
+<style>
+  /* ============================================================
+     DESIGN TOKENS
+  ============================================================ */
+  :root{
+    --bg: #F6F4FE;
+    --bg-elevated: #FFFFFF;
+    --card: #FFFFFF;
+    --card-border: #E4DFF7;
+    --text-primary: #10151F;
+    --text-secondary: #667085;
+    --text-tertiary: #98A2B3;
+    --accent-green: #6D46E5;
+    --accent-green-soft: rgba(109,70,229,0.12);
+    --accent-blue: #101585;
+    --accent-blue-soft: rgba(16,21,133,0.09);
+    --accent-yellow: #FFDD44;
+    --divider: #ECE8FA;
+    --shadow-card: 0 1px 2px rgba(16,21,31,0.04), 0 6px 20px -8px rgba(16,21,31,0.10);
+    --shadow-soft: 0 1px 3px rgba(16,21,31,0.05);
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+    --focus-ring: 0 0 0 3px rgba(16,21,133,0.35);
+    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-num: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Mono", Roboto, Helvetica, Arial, sans-serif;
+    --track-bg: #E4DFF7;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg: #0F0C1F;
+      --bg-elevated: #17142E;
+      --card: #191631;
+      --card-border: #2C2650;
+      --text-primary: #EEF1F6;
+      --text-secondary: #9AA4B5;
+      --text-tertiary: #6B7686;
+      --accent-green: #A78BFA;
+      --accent-green-soft: rgba(167,139,250,0.16);
+      --accent-blue: #7B80FF;
+      --accent-blue-soft: rgba(123,128,255,0.16);
+      --accent-yellow: #FFDD44;
+      --divider: #251F45;
+      --shadow-card: 0 1px 2px rgba(0,0,0,0.25), 0 10px 28px -10px rgba(0,0,0,0.55);
+      --shadow-soft: 0 1px 3px rgba(0,0,0,0.3);
+      --focus-ring: 0 0 0 3px rgba(123,128,255,0.45);
+      --track-bg: #332C5C;
+    }
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+  body{
+    padding-bottom: 40px;
+  }
+  :focus-visible{
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: 8px;
+  }
+  button{ font-family: inherit; }
+
+  .wrap{
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 20px 16px 0;
+  }
+
+  /* ============================================================
+     HEADER
+  ============================================================ */
+  header.app-header{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding: 6px 4px 22px;
+  }
+  .logo-mark{
+    width:40px; height:40px;
+    flex: 0 0 auto;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-soft);
+  }
+  .logo-mark svg{ display:block; }
+  .header-text h1{
+    margin:0;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .header-text p{
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* ============================================================
+     RESULT CARD
+  ============================================================ */
+  .result-card{
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 26px 24px 24px;
+    margin-bottom: 16px;
+  }
+  .result-label{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 8px;
+  }
+  .result-value{
+    font-family: var(--font-num);
+    font-size: clamp(32px, 8vw, 46px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .result-sub{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.gain-positive{ color: var(--accent-green); background: var(--accent-green-soft); }
+  .pill.gain-negative{ color: #C4382D; background: rgba(196,56,45,0.10); }
+
+  /* ============================================================
+     CHART CARD
+  ============================================================ */
+  .chart-card{
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 20px 8px 14px 4px;
+    margin-bottom: 16px;
+  }
+  .chart-head{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    padding: 0 16px 10px 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chart-title{
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .legend{
+    display:flex;
+    gap: 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .legend-item{ display:flex; align-items:center; gap:6px; }
+  .legend-dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .legend-dot.green{ background: var(--accent-green); }
+  .legend-dot.blue{ background: var(--accent-blue); }
+
+  .chart-wrap{
+    position: relative;
+    width: 100%;
+    touch-action: pan-y;
+  }
+  svg.chart-svg{
+    display:block;
+    width:100%;
+    height:auto;
+    overflow: visible;
+  }
+  .chart-svg .grid-line{
+    stroke: var(--divider);
+    stroke-width: 1;
+  }
+  .chart-svg .axis-label{
+    fill: var(--text-tertiary);
+    font-size: 10.5px;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+  }
+  .chart-svg .axis-line{
+    stroke: var(--card-border);
+    stroke-width: 1;
+  }
+  .chart-svg .x-tick-minor{
+    stroke: var(--card-border);
+    stroke-width: 1;
+    opacity: 0.9;
+  }
+  .chart-svg .x-axis-unit{
+    fill: var(--text-tertiary);
+    font-size: 9px;
+  }
+  .area-blue{ fill: var(--accent-blue); opacity: 0.10; }
+  .area-green{ fill: var(--accent-green); opacity: 0.14; }
+  .line-blue{
+    fill:none; stroke: var(--accent-blue); stroke-width: 2.25;
+    stroke-linejoin: round; stroke-linecap: round;
+  }
+  .line-green{
+    fill:none; stroke: var(--accent-green); stroke-width: 2.5;
+    stroke-linejoin: round; stroke-linecap: round;
+  }
+  .guide-line{
+    stroke: var(--text-tertiary);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    opacity: 0;
+  }
+  .hover-dot{
+    opacity: 0;
+  }
+  .hover-dot circle.outer{
+    fill: var(--card);
+  }
+
+  .tooltip{
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    background: var(--bg-elevated);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    padding: 10px 13px;
+    font-size: 12.5px;
+    min-width: 168px;
+    opacity: 0;
+    transform: translate(-9999px,-9999px);
+    z-index: 5;
+    transition: opacity 120ms ease;
+  }
+  .tooltip.visible{ opacity: 1; }
+  .tooltip .tt-year{
+    font-weight: 700;
+    font-size: 12.5px;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+  .tooltip .tt-row{
+    display:flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 2px 0;
+  }
+  .tooltip .tt-row .tt-key{
+    color: var(--text-secondary);
+    display:flex; align-items:center; gap:5px;
+    font-weight: 500;
+  }
+  .tooltip .tt-row .tt-val{
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .tooltip .tt-dot{ width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
+  .tooltip hr{
+    border: none; border-top: 1px solid var(--divider);
+    margin: 6px 0;
+  }
+
+  /* ============================================================
+     SUMMARY CARDS
+  ============================================================ */
+  .cards-grid{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .stat-card{
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    padding: 14px 14px 13px;
+  }
+  .stat-label{
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 6px;
+  }
+  .stat-value{
+    font-family: var(--font-num);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin:0;
+    font-variant-numeric: tabular-nums;
+    word-break: break-word;
+  }
+  .stat-value.green{ color: var(--accent-green); }
+  .stat-value.blue{ color: var(--accent-blue); }
+
+  /* ============================================================
+     CONTROLS
+  ============================================================ */
+  .controls-card{
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 20px 20px 8px;
+    margin-bottom: 18px;
+  }
+  .controls-title{
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 14px;
+  }
+  .controls-grid{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .control{
+    padding: 14px 0 16px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .control:last-child{ border-bottom: none; }
+  .control-row{
+    display:flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+  .control-row label{
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .control-value{
+    font-family: var(--font-num);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  input[type="range"]{
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 44px;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height: 6px;
+    border-radius: 999px;
+    background: var(--track-bg);
+  }
+  input[type="range"]::-moz-range-track{
+    height: 6px;
+    border-radius: 999px;
+    background: var(--track-bg);
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance: none;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    border: 3px solid var(--bg-elevated);
+    box-shadow: 0 1px 4px rgba(16,21,31,0.3);
+    margin-top: -9px;
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    border: 3px solid var(--bg-elevated);
+    box-shadow: 0 1px 4px rgba(16,21,31,0.3);
+    cursor: pointer;
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb{
+    box-shadow: var(--focus-ring);
+  }
+
+  .segmented{
+    display: inline-flex;
+    background: var(--track-bg);
+    border-radius: 11px;
+    padding: 3px;
+    gap: 2px;
+    width: 100%;
+  }
+  .segmented button{
+    flex: 1 1 0;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 10px 8px;
+    min-height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+  .segmented button[aria-pressed="true"]{
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .reset-row{
+    display:flex;
+    justify-content: center;
+    padding: 14px 0 4px;
+  }
+  .reset-btn{
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 14px;
+    min-height: 44px;
+    cursor: pointer;
+    border-radius: 8px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .reset-btn:hover{ color: var(--text-secondary); }
+
+  /* ============================================================
+     FOOTER
+  ============================================================ */
+  footer.app-footer{
+    text-align: center;
+    padding: 10px 20px 4px;
+  }
+  footer.app-footer p{
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-tertiary);
+  }
+
+  /* ============================================================
+     RESPONSIVE — DESKTOP
+  ============================================================ */
+  /* ============================================================
+     LANGUAGE SWITCHER
+  ============================================================ */
+  .lang-switcher{
+    display: inline-flex;
+    background: var(--track-bg);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .lang-btn{
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 7px 8px;
+    min-height: 32px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease;
+    font-family: var(--font-display);
+  }
+  .lang-btn.active{
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* ============================================================
+     MOBILE BOTTOM SHEET
+  ============================================================ */
+  .mobile-sheet{
+    display: none;
+  }
+  @media (max-width: 759px){
+    .mobile-sheet{
+      display: block;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .mobile-sheet-bar{
+      pointer-events: auto;
+      background: var(--card);
+      border-top: 1px solid var(--card-border);
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+      padding: 10px 16px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .mobile-sheet-value{
+      font-family: var(--font-num);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+      flex: 1 1 auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mobile-sheet-btn{
+      border: none;
+      background: var(--accent-blue);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      flex: 0 0 auto;
+      font-family: inherit;
+    }
+    .mobile-sheet-panel{
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.25);
+      transform: translateY(100%);
+      transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+      max-height: 82vh;
+      overflow-y: auto;
+      padding: 20px 20px 30px;
+      z-index: 101;
+      pointer-events: auto;
+    }
+    .mobile-sheet-panel.open{
+      transform: translateY(0);
+    }
+    .mobile-sheet-overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 250ms ease;
+      z-index: 100;
+    }
+    .mobile-sheet-overlay.open{
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .mobile-sheet-handle{
+      width: 36px; height: 4px;
+      background: var(--divider);
+      border-radius: 999px;
+      margin: 0 auto 16px;
+    }
+    .mobile-sheet-close{
+      position: absolute;
+      top: 14px; right: 14px;
+      width: 32px; height: 32px;
+      border: none;
+      background: var(--bg);
+      border-radius: 50%;
+      color: var(--text-secondary);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    body.sheet-open{
+      overflow: hidden;
+    }
+    /* Hide desktop controls on mobile when sheet is available */
+    .controls-card.desktop-only{
+      display: none;
+    }
+    .strategies-card.desktop-only{
+      display: none;
+    }
+  }
+  @media (min-width: 760px){
+    .mobile-sheet{ display: none !important; }
+    .mobile-sheet-overlay{ display: none !important; }
+  }
+
+  /* ============================================================
+     STRATEGY GRID — MOBILE FIX
+  ============================================================ */
+  .strategies-grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:8px;
+  }
+  @media (min-width: 760px){
+    .strategies-grid{
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+  }
+
+  @media (min-width: 760px){
+    .wrap{ padding: 32px 24px 0; }
+    header.app-header{ padding-bottom: 26px; }
+    .logo-mark{ width:46px; height:46px; }
+    .header-text h1{ font-size: 22px; }
+    .header-text p{ font-size: 14px; }
+    .result-card{ padding: 32px 34px 30px; }
+    .cards-grid{ grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .controls-grid{ grid-template-columns: 1fr 1fr; column-gap: 32px; }
+    .controls-card{ padding: 26px 30px 12px; }
+    .chart-card{ padding: 24px 20px 18px 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .sr-only{
+    position:absolute; width:1px; height:1px;
+    padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+
+/* ============================================================
+   INVESTMENT STRATEGIES
+============================================================ */
+.strategies-card{
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+.strategies-title{
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.strategies-subtitle{
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.strategy-card{
+  position:relative;
+  appearance:none;
+  width:100%;
+  text-align:center;
+  font:inherit;
+  color:var(--text-primary);
+  background:var(--bg-elevated);
+  border:1px solid var(--card-border);
+  border-radius:var(--radius-md);
+  padding:14px 8px 12px;
+  cursor:pointer;
+  transition:border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+.strategy-card:hover{ box-shadow:var(--shadow-soft); }
+.strategy-card.selected{
+  border-color:var(--accent-blue);
+  box-shadow:0 0 0 2px var(--accent-blue-soft);
+}
+.strategy-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.strategy-name{
+  font-size:12.5px;
+  font-weight:700;
+  line-height:1.3;
+  word-break:break-word;
+}
+.strategy-check{
+  position:absolute;
+  top:6px; right:6px;
+  width:16px; height:16px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  color:transparent;
+  background:var(--track-bg);
+  font-size:10px;
+  font-weight:800;
+  flex:0 0 auto;
+}
+.strategy-card.selected .strategy-check{
+  color:#101585;
+  background:var(--accent-yellow);
+}
+.strategy-description{
+  /* Visually hidden — still readable by screen readers as part of the
+     button's content. A sighted hover/focus reveal is handled separately
+     by .strategy-hint below, so the description isn't duplicated visually. */
+  position:absolute;
+  width:1px; height:1px;
+  padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+.strategy-hint{
+  margin: 12px 2px 0;
+  min-height: 4.5em;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+.strategy-hint.active{ opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ============================================================
+       HEADER
+  ============================================================ -->
+  <header class="app-header">
+    <div class="logo-mark" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <defs>
+          <linearGradient id="logoGrad" x1="2" y1="18" x2="22" y2="4" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#101585"/>
+            <stop offset="0.55" stop-color="#A78BFA"/>
+            <stop offset="1" stop-color="#FFDD44"/>
+          </linearGradient>
+        </defs>
+        <path d="M2.5 17.5L9 11L13.5 14.5L21.5 5.5" stroke="url(#logoGrad)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M15.5 5.5H21.5V11.5" stroke="url(#logoGrad)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1 data-i18n="appTitle">Simulateur d'investissement</h1>
+      <p data-i18n="appSubtitle">Visualisez l'impact des intérêts composés sur votre patrimoine.</p>
+    </div>
+    <div class="lang-switcher" role="group" aria-label="Langue">
+      <button type="button" data-lang="fr" class="lang-btn active" aria-pressed="true">FR</button>
+      <button type="button" data-lang="de" class="lang-btn" aria-pressed="false">DE</button>
+      <button type="button" data-lang="en" class="lang-btn" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       RESULT CARD
+  ============================================================ -->
+  <section class="result-card" aria-live="polite">
+    <p class="result-label" data-i18n="resultLabel">Valeur du portefeuille</p>
+    <p class="result-value" id="resultValue">CHF 0.00</p>
+    <div class="result-sub">
+      <span class="pill gain-positive" id="resultGainPill">
+        <span id="resultGain">+CHF 0.00</span>
+      </span>
+      <span class="pill gain-positive" id="resultPerfPill">
+        <span id="resultPerf">+0.00 %</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       CHART CARD
+  ============================================================ -->
+  <section class="chart-card">
+    <div class="chart-head">
+      <p class="chart-title" data-i18n="chartTitle">Évolution du portefeuille</p>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot green"></span><span data-i18n="legendPortfolio">Valeur du portefeuille</span></span>
+        <span class="legend-item"><span class="legend-dot blue"></span><span data-i18n="legendInvested">Capital investi</span></span>
+      </div>
+    </div>
+    <div class="chart-wrap" id="chartWrap">
+      <svg class="chart-svg" id="chartSvg" viewBox="0 0 640 340" preserveAspectRatio="none" role="img" aria-label="Graphique d'évolution du portefeuille" data-i18n-aria="ariaChart">
+        <g id="gridGroup"></g>
+        <g id="axisGroup"></g>
+        <path id="areaBlue" class="area-blue"></path>
+        <path id="areaGreen" class="area-green"></path>
+        <path id="lineBlue" class="line-blue"></path>
+        <path id="lineGreen" class="line-green"></path>
+        <line id="guideLine" class="guide-line" x1="0" y1="0" x2="0" y2="0"></line>
+        <g id="hoverDotBlue" class="hover-dot">
+          <circle class="outer" r="7"></circle>
+          <circle r="4.5" fill="var(--accent-blue)"></circle>
+        </g>
+        <g id="hoverDotGreen" class="hover-dot">
+          <circle class="outer" r="7"></circle>
+          <circle r="4.5" fill="var(--accent-green)"></circle>
+        </g>
+      </svg>
+      <div class="tooltip" id="tooltip">
+        <div class="tt-year" id="ttYear"><span data-i18n="yearPrefix">Année</span> 0</div>
+        <div class="tt-row"><span class="tt-key"><span class="tt-dot" style="background:var(--accent-green)"></span><span data-i18n="tooltipValue">Valeur</span></span><span class="tt-val" id="ttValue">CHF 0.00</span></div>
+        <div class="tt-row"><span class="tt-key"><span class="tt-dot" style="background:var(--accent-blue)"></span><span data-i18n="tooltipInvested">Investi</span></span><span class="tt-val" id="ttInvested">CHF 0.00</span></div>
+        <hr>
+        <div class="tt-row"><span class="tt-key" data-i18n="tooltipGains">Gains</span><span class="tt-val" id="ttGains">CHF 0.00</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SUMMARY CARDS
+  ============================================================ -->
+  <section class="cards-grid">
+    <div class="stat-card">
+      <p class="stat-label" data-i18n="statInvested">Capital investi</p>
+      <p class="stat-value blue" id="cardInvested">CHF 0.00</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label" data-i18n="statFinal">Valeur finale</p>
+      <p class="stat-value" id="cardFinal">CHF 0.00</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label" data-i18n="statGains">Gains</p>
+      <p class="stat-value green" id="cardGains">CHF 0.00</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label" data-i18n="statPerf">Performance</p>
+      <p class="stat-value green" id="cardPerf">+0.00 %</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       CONTROLS
+  ============================================================ -->
+  <section class="controls-card desktop-only">
+    <p class="controls-title" data-i18n="paramsTitle">Paramètres</p>
+    <div class="controls-grid">
+
+      <div class="control">
+        <div class="control-row">
+          <label for="capitalInitial" data-i18n="labelCapital">Capital initial</label>
+          <span class="control-value" id="capitalInitialValue">CHF 10'000.00</span>
+        </div>
+        <input type="range" id="capitalInitial" min="0" max="250000" step="500" value="10000"
+               aria-label="Capital initial" data-i18n-aria="ariaCapital">
+      </div>
+
+      <div class="control">
+        <div class="control-row">
+          <label for="contribution" data-i18n="labelContribution">Versement</label>
+          <span class="control-value" id="contributionValue">CHF 100.00</span>
+        </div>
+        <input type="range" id="contribution" min="0" max="5000" step="50" value="100"
+               aria-label="Versement périodique" data-i18n-aria="ariaContribution">
+        <div class="segmented" role="group" aria-label="Fréquence de versement" style="margin-top:12px;">
+          <button type="button" id="freqMonthly" aria-pressed="true" data-i18n="freqMonthly">Mensuel</button>
+          <button type="button" id="freqWeekly" aria-pressed="false" data-i18n="freqWeekly">Hebdomadaire</button>
+        </div>
+      </div>
+
+      <div class="control">
+        <div class="control-row">
+          <label for="duration" data-i18n="labelDuration">Durée</label>
+          <span class="control-value" id="durationValue">10 ans</span>
+        </div>
+        <input type="range" id="duration" min="1" max="40" step="1" value="10"
+               aria-label="Durée de l'investissement" data-i18n-aria="ariaDuration">
+      </div>
+
+      <div class="control">
+        <div class="control-row">
+          <label for="annualReturn" data-i18n="labelReturn">Rendement annuel moyen</label>
+          <span class="control-value" id="annualReturnValue">3.50 %</span>
+        </div>
+        <input type="range" id="annualReturn" min="0" max="15" step="0.25" value="3.5"
+               aria-label="Rendement annuel moyen" data-i18n-aria="ariaReturn">
+      </div>
+
+    </div>
+    <div class="reset-row">
+      <button type="button" class="reset-btn" id="resetBtn" data-i18n="resetBtn">Réinitialiser</button>
+    </div>
+  </section>
+
+<!-- INVESTMENT STRATEGIES STEP 1 -->
+<section class="strategies-card desktop-only" aria-labelledby="strategiesTitle">
+  <h2 class="strategies-title" id="strategiesTitle" data-i18n="strategyTitle">Stratégie d'investissement</h2>
+  <p class="strategies-subtitle" data-i18n="strategySubtitle">Choisissez la stratégie qui correspond à votre profil.</p>
+  <div class="strategies-grid">
+    <button type="button" class="strategy-card selected" data-strategy="revenu" aria-pressed="true">
+      <div class="strategy-card-head"><span class="strategy-name" data-i18n="stratIncome">Revenu</span></div>
+      <span class="strategy-check" aria-hidden="true">✓</span>
+      <p class="strategy-description" data-i18n="descIncome">Cette stratégie vise à générer des revenus réguliers grâce aux dividendes et aux intérêts, notamment via des actions versant des dividendes et des obligations. Elle convient aux investisseurs recherchant un revenu régulier.</p>
+    </button>
+    <button type="button" class="strategy-card" data-strategy="equilibre" aria-pressed="false">
+      <div class="strategy-card-head"><span class="strategy-name" data-i18n="stratBalanced">Équilibré</span></div>
+      <span class="strategy-check" aria-hidden="true">✓</span>
+      <p class="strategy-description" data-i18n="descBalanced">Une stratégie équilibrée combine actions et obligations afin d'obtenir une croissance modérée avec un risque modéré. Elle recherche un équilibre entre sécurité et rendement et convient idéalement aux objectifs à moyen terme.</p>
+    </button>
+    <button type="button" class="strategy-card" data-strategy="croissance" aria-pressed="false">
+      <div class="strategy-card-head"><span class="strategy-name" data-i18n="stratGrowth">Croissance</span></div>
+      <span class="strategy-check" aria-hidden="true">✓</span>
+      <p class="strategy-description" data-i18n="descGrowth">Les investisseurs visant des rendements potentiellement plus élevés privilégient les actions à forte croissance. Cela augmente également le risque. Cette stratégie convient aux investisseurs à long terme recherchant une croissance du capital.</p>
+    </button>
+    <button type="button" class="strategy-card" data-strategy="actions" aria-pressed="false">
+      <div class="strategy-card-head"><span class="strategy-name" data-i18n="stratActions">Actions</span></div>
+      <span class="strategy-check" aria-hidden="true">✓</span>
+      <p class="strategy-description" data-i18n="descActions">Cette stratégie prend davantage de risques afin de rechercher des rendements élevés. Elle peut inclure des marchés volatils et des actions spéculatives. L'horizon d'investissement devrait être long terme compte tenu de la volatilité accrue.</p>
+    </button>
+  </div>
+  <p class="strategy-hint" id="strategyHint" aria-hidden="true" data-i18n="strategyHint">Survolez une stratégie pour découvrir sa description.</p>
+</section>
+
+  <!-- ============================================================
+       MOBILE BOTTOM SHEET
+  ============================================================ -->
+  <div class="mobile-sheet" id="mobileSheet" aria-hidden="true">
+    <div class="mobile-sheet-bar">
+      <span class="mobile-sheet-value" id="mobileSheetValue">CHF 0.00</span>
+      <button type="button" class="mobile-sheet-btn" id="mobileSheetBtn" data-i18n="sheetBtn">Ajuster</button>
+    </div>
+  </div>
+  <div class="mobile-sheet-overlay" id="mobileSheetOverlay"></div>
+  <div class="mobile-sheet-panel" id="mobileSheetPanel" role="dialog" aria-modal="true" aria-label="Paramètres">
+    <div class="mobile-sheet-handle"></div>
+    <button type="button" class="mobile-sheet-close" id="mobileSheetClose" aria-label="Fermer">×</button>
+    <!-- Strategy clone will be injected here -->
+    <div id="mobileSheetStrategy"></div>
+    <!-- Controls clone will be injected here -->
+    <div id="mobileSheetControls"></div>
+  </div>
+
+  <!-- ============================================================
+       FOOTER / DISCLAIMER
+  ============================================================ -->
+  <footer class="app-footer">
+    <p data-i18n="footerDisclaimer">Ce simulateur est fourni à titre indicatif. Les rendements futurs ne sont pas garantis.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     1. CONFIGURATION
+  ============================================================ */
+  const CONFIG = {
+    storageKey: "sim-invest-state-v2",
+    defaults: {
+      capitalInitial: 10000,
+      contribution: 100,
+      frequency: "monthly",   // "monthly" | "weekly"
+      duration: 10,           // years
+      annualReturn: 3.50      // percent
+    },
+    periodsPerYear: { monthly: 12, weekly: 52 },
+    animDurationMs: 380,
+    initialDrawMs: 1100,
+    countUpMs: 900,
+    svgViewBox: { w: 640, h: 340 },
+    chartMargin: { top: 14, right: 10, bottom: 40, left: 62 },
+    yAxisBaseStep: 5000,
+    // Preset "Rendement annuel moyen" values (%) applied when a strategy card is chosen.
+    // Values are chosen to align exactly with the annualReturn slider's 0.25 step.
+    strategyReturns: {
+      revenu: 3.50,
+      equilibre: 5.50,
+      croissance: 7.50,
+      actions: 9.50
+    }
+  };
+
+  /* ============================================================
+     TRANSLATIONS
+  ============================================================ */
+  const i18n = {
+    fr: {
+      appTitle: "Simulateur d'investissement",
+      appSubtitle: "Visualisez l'impact des intérêts composés sur votre patrimoine.",
+      resultLabel: "Valeur du portefeuille",
+      chartTitle: "Évolution du portefeuille",
+      legendPortfolio: "Valeur du portefeuille",
+      legendInvested: "Capital investi",
+      yearPrefix: "Année",
+      tooltipValue: "Valeur",
+      tooltipInvested: "Investi",
+      tooltipGains: "Gains",
+      statInvested: "Capital investi",
+      statFinal: "Valeur finale",
+      statGains: "Gains",
+      statPerf: "Performance",
+      paramsTitle: "Paramètres",
+      labelCapital: "Capital initial",
+      labelContribution: "Versement",
+      labelDuration: "Durée",
+      labelReturn: "Rendement annuel moyen",
+      freqMonthly: "Mensuel",
+      freqWeekly: "Hebdomadaire",
+      resetBtn: "Réinitialiser",
+      strategyTitle: "Stratégie d'investissement",
+      strategySubtitle: "Choisissez la stratégie qui correspond à votre profil.",
+      stratIncome: "Revenu",
+      stratBalanced: "Équilibré",
+      stratGrowth: "Croissance",
+      stratActions: "Actions",
+      descIncome: "Cette stratégie vise à générer des revenus réguliers grâce aux dividendes et aux intérêts, notamment via des actions versant des dividendes et des obligations. Elle convient aux investisseurs recherchant un revenu régulier.",
+      descBalanced: "Une stratégie équilibrée combine actions et obligations afin d'obtenir une croissance modérée avec un risque modéré. Elle recherche un équilibre entre sécurité et rendement et convient idéalement aux objectifs à moyen terme.",
+      descGrowth: "Les investisseurs visant des rendements potentiellement plus élevés privilégient les actions à forte croissance. Cela augmente également le risque. Cette stratégie convient aux investisseurs à long terme recherchant une croissance du capital.",
+      descActions: "Cette stratégie prend davantage de risques afin de rechercher des rendements élevés. Elle peut inclure des marchés volatils et des actions spéculatives. L'horizon d'investissement devrait être long terme compte tenu de la volatilité accrue.",
+      strategyHint: "Survolez une stratégie pour découvrir sa description.",
+      footerDisclaimer: "Ce simulateur est fourni à titre indicatif. Les rendements futurs ne sont pas garantis.",
+      sheetBtn: "Ajuster",
+      ariaCapital: "Capital initial en francs suisses",
+      ariaContribution: "Montant du versement périodique en francs suisses",
+      ariaDuration: "Durée de l'investissement en années",
+      ariaReturn: "Rendement annuel moyen estimé en pourcent",
+      ariaChart: "Graphique montrant l'évolution de la valeur du portefeuille et du capital investi au fil du temps",
+      yearSingular: "année",
+      yearPlural: "années"
+    },
+    en: {
+      appTitle: "Investment Simulator",
+      appSubtitle: "Visualise the impact of compound interest on your wealth.",
+      resultLabel: "Portfolio Value",
+      chartTitle: "Portfolio Evolution",
+      legendPortfolio: "Portfolio Value",
+      legendInvested: "Capital Invested",
+      yearPrefix: "Year",
+      tooltipValue: "Value",
+      tooltipInvested: "Invested",
+      tooltipGains: "Gains",
+      statInvested: "Capital Invested",
+      statFinal: "Final Value",
+      statGains: "Gains",
+      statPerf: "Performance",
+      paramsTitle: "Parameters",
+      labelCapital: "Initial Capital",
+      labelContribution: "Contribution",
+      labelDuration: "Duration",
+      labelReturn: "Average Annual Return",
+      freqMonthly: "Monthly",
+      freqWeekly: "Weekly",
+      resetBtn: "Reset",
+      strategyTitle: "Investment Strategy",
+      strategySubtitle: "Choose the strategy that matches your profile.",
+      stratIncome: "Income",
+      stratBalanced: "Balanced",
+      stratGrowth: "Growth",
+      stratActions: "Equities",
+      descIncome: "This strategy aims to generate regular income through dividends and interest, mainly via dividend-paying stocks and bonds. It suits investors seeking regular income.",
+      descBalanced: "A balanced strategy combines equities and bonds to achieve moderate growth with moderate risk. It seeks a balance between security and return and is ideally suited to medium-term objectives.",
+      descGrowth: "Investors targeting potentially higher returns favour high-growth equities. This also increases risk. This strategy suits long-term investors seeking capital growth.",
+      descActions: "This strategy takes more risk in pursuit of higher returns. It may include volatile markets and speculative equities. The investment horizon should be long-term given the increased volatility.",
+      strategyHint: "Hover over a strategy to discover its description.",
+      footerDisclaimer: "This simulator is provided for indicative purposes only. Future returns are not guaranteed.",
+      sheetBtn: "Adjust",
+      ariaCapital: "Initial capital in Swiss francs",
+      ariaContribution: "Periodic contribution amount in Swiss francs",
+      ariaDuration: "Investment duration in years",
+      ariaReturn: "Estimated average annual return in percent",
+      ariaChart: "Chart showing the evolution of portfolio value and invested capital over time",
+      yearSingular: "year",
+      yearPlural: "years"
+    },
+    de: {
+      appTitle: "Investment-Simulator",
+      appSubtitle: "Visualisieren Sie die Auswirkungen von Zinseszins auf Ihr Vermögen.",
+      resultLabel: "Portfoliowert",
+      chartTitle: "Portfolio-Entwicklung",
+      legendPortfolio: "Portfoliowert",
+      legendInvested: "Investiertes Kapital",
+      yearPrefix: "Jahr",
+      tooltipValue: "Wert",
+      tooltipInvested: "Investiert",
+      tooltipGains: "Gewinne",
+      statInvested: "Investiertes Kapital",
+      statFinal: "Endwert",
+      statGains: "Gewinne",
+      statPerf: "Performance",
+      paramsTitle: "Parameter",
+      labelCapital: "Anfangskapital",
+      labelContribution: "Beitrag",
+      labelDuration: "Dauer",
+      labelReturn: "Durchschnittliche Jahresrendite",
+      freqMonthly: "Monatlich",
+      freqWeekly: "Wöchentlich",
+      resetBtn: "Zurücksetzen",
+      strategyTitle: "Anlagestrategie",
+      strategySubtitle: "Wählen Sie die Strategie, die zu Ihrem Profil passt.",
+      stratIncome: "Einkommen",
+      stratBalanced: "Ausgewogen",
+      stratGrowth: "Wachstum",
+      stratActions: "Aktien",
+      descIncome: "Diese Strategie zielt darauf ab, regelmäßige Einkünfte durch Dividenden und Zinsen zu erzielen, hauptsächlich über dividendenstarke Aktien und Anleihen. Sie eignet sich für Anleger, die regelmäßige Einkünfte suchen.",
+      descBalanced: "Eine ausgewogene Strategie kombiniert Aktien und Anleihen, um ein moderates Wachstum mit moderatem Risiko zu erzielen. Sie sucht ein Gleichgewicht zwischen Sicherheit und Rendite und eignet sich ideal für mittelfristige Ziele.",
+      descGrowth: "Anleger, die potenziell höhere Renditen anstreben, bevorzugen Aktien mit hohem Wachstum. Dies erhöht auch das Risiko. Diese Strategie eignet sich für langfristige Anleger, die Kapitalwachstum suchen.",
+      descActions: "Diese Strategie geht mehr Risiko ein, um höhere Renditen zu erzielen. Sie kann volatile Märkte und spekulative Aktien umfassen. Der Anlagehorizont sollte langfristig sein, angesichts der erhöhten Volatilität.",
+      strategyHint: "Fahren Sie mit der Maus über eine Strategie, um deren Beschreibung zu entdecken.",
+      footerDisclaimer: "Dieser Simulator wird nur zu indikativen Zwecken bereitgestellt. Zukünftige Renditen sind nicht garantiert.",
+      sheetBtn: "Anpassen",
+      ariaCapital: "Anfangskapital in Schweizer Franken",
+      ariaContribution: "Periodischer Beitragsbetrag in Schweizer Franken",
+      ariaDuration: "Anlagedauer in Jahren",
+      ariaReturn: "Geschätzte durchschnittliche Jahresrendite in Prozent",
+      ariaChart: "Diagramm, das die Entwicklung des Portfoliowerts und des investierten Kapitals im Laufe der Zeit zeigt",
+      yearSingular: "Jahr",
+      yearPlural: "Jahre"
+    },
+
+  };
+
+  let currentLang = "fr";
+  const langStorageKey = "sim-invest-lang-v1";
+
+  function t(key){
+    const dict = i18n[currentLang] || i18n.fr;
+    return dict[key] !== undefined ? dict[key] : i18n.fr[key] || key;
+  }
+
+  function applyLanguage(){
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const key = el.getAttribute("data-i18n");
+      if (!key) return;
+      const val = t(key);
+      if (el.tagName === "INPUT" || el.tagName === "BUTTON") {
+        // For buttons/inputs, update text content if no value
+        if (el.value !== undefined && el.tagName === "INPUT") {
+          // skip inputs
+        } else {
+          el.textContent = val;
+        }
+      } else {
+        el.textContent = val;
+      }
+    });
+    document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+      const key = el.getAttribute("data-i18n-aria");
+      if (key) el.setAttribute("aria-label", t(key));
+    });
+    document.querySelectorAll(".lang-btn").forEach((btn) => {
+      const isActive = btn.getAttribute("data-lang") === currentLang;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+    // Update page title
+    document.title = t("appTitle");
+    // Update manifest
+    initManifest();
+    // Update duration label with correct plural
+    document.getElementById("durationValue").textContent = state.duration + " " + (state.duration === 1 ? t("yearSingular") : t("yearPlural"));
+    // Update tooltip year prefix
+    const ttYear = document.getElementById("ttYear");
+    if (ttYear && chartScale && chartScale.history) {
+      // will be updated on next render
+    }
+    // Update strategy hint default text
+    const hintEl = document.getElementById("strategyHint");
+    if (hintEl && !hintEl.classList.contains("active")) {
+      hintEl.textContent = t("strategyHint");
+    }
+    // Re-render chart axis labels (they're rebuilt on next render)
+    if (state.history && state.history.length) {
+      renderChart(state.history, false);
+    }
+  }
+
+  function setLanguage(lang){
+    if (!i18n[lang]) return;
+    currentLang = lang;
+    try { localStorage.setItem(langStorageKey, lang); } catch (e) {}
+    applyLanguage();
+  }
+
+  function loadLanguage(){
+    try {
+      const saved = localStorage.getItem(langStorageKey);
+      if (saved && i18n[saved]) currentLang = saved;
+    } catch (e) {}
+  }
+
+  const prefersReducedMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ============================================================
+     2. STATE
+  ============================================================ */
+  const state = {
+    capitalInitial: CONFIG.defaults.capitalInitial,
+    contribution: CONFIG.defaults.contribution,
+    frequency: CONFIG.defaults.frequency,
+    duration: CONFIG.defaults.duration,
+    annualReturn: CONFIG.defaults.annualReturn,
+    history: [],       // full period-by-period simulation output
+    isFirstRender: true,
+    hoverActive: false
+  };
+
+  /* ============================================================
+     3. FORMATTING UTILITIES
+  ============================================================ */
+  function formatCHF(value, decimals){
+    decimals = decimals === undefined ? 2 : decimals;
+    const sign = value < 0 ? "-" : "";
+    const abs = Math.abs(value);
+    const formatted = abs.toLocaleString("de-CH", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    });
+    return sign + "CHF " + formatted;
+  }
+
+  function formatCHFSigned(value, decimals){
+    const sign = value >= 0 ? "+" : "-";
+    const abs = Math.abs(value);
+    const formatted = abs.toLocaleString("de-CH", {
+      minimumFractionDigits: decimals === undefined ? 2 : decimals,
+      maximumFractionDigits: decimals === undefined ? 2 : decimals
+    });
+    return sign + "CHF " + formatted;
+  }
+
+  function formatPercent(value, signed){
+    const sign = signed ? (value >= 0 ? "+" : "-") : "";
+    const abs = signed ? Math.abs(value) : value;
+    return sign + abs.toLocaleString("de-CH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }) + " %";
+  }
+
+  function formatAxisCHF(value){
+    return "CHF " + Math.round(value).toLocaleString("de-CH");
+  }
+
+  function formatAxisYearParts(yearValue){
+    const n = Math.round(yearValue);
+    return { num: String(n), unit: (n <= 1 ? t("yearSingular") : t("yearPlural")) };
+  }
+
+  /* ============================================================
+     4. FINANCIAL SIMULATION
+     Genuine period-by-period compounding.
+     Order per period (spec section 22):
+       1. Existing portfolio grows by the periodic return.
+       2. Contribution is added.
+       3. Invested capital increases by the contribution.
+       4. Record the new values.
+  ============================================================ */
+  function runSimulation(capitalInitial, contribution, frequency, durationYears, annualReturnPct){
+    const periodsPerYear = CONFIG.periodsPerYear[frequency];
+    const totalPeriods = Math.round(durationYears * periodsPerYear);
+    const annualReturnDecimal = annualReturnPct / 100;
+    // Convert annual rate to a genuine periodic compounding rate.
+    const periodicRate = Math.pow(1 + annualReturnDecimal, 1 / periodsPerYear) - 1;
+
+    const history = [];
+
+    let value = capitalInitial;
+    let invested = capitalInitial;
+
+    // Period 0 — starting point, before any growth/contribution.
+    history.push({
+      period: 0,
+      year: 0,
+      invested: invested,
+      value: value,
+      gains: value - invested
+    });
+
+    for (let p = 1; p <= totalPeriods; p++){
+      // 1. Existing portfolio grows by the periodic return.
+      value = value * (1 + periodicRate);
+      // 2. Contribution is added.
+      value = value + contribution;
+      // 3. Invested capital increases by the contribution.
+      invested = invested + contribution;
+      // 4. Record the new values.
+      history.push({
+        period: p,
+        year: p / periodsPerYear,
+        invested: invested,
+        value: value,
+        gains: value - invested
+      });
+    }
+
+    return history;
+  }
+
+  function computeResult(history){
+    const last = history[history.length - 1];
+    const invested = last.invested;
+    const finalValue = last.value;
+    const gains = finalValue - invested;
+    const performance = invested > 0 ? (gains / invested) * 100 : 0;
+    return { invested, finalValue, gains, performance };
+  }
+
+  /* ============================================================
+     5. CHART RENDERING
+  ============================================================ */
+  const els = {
+    svg: document.getElementById("chartSvg"),
+    gridGroup: document.getElementById("gridGroup"),
+    axisGroup: document.getElementById("axisGroup"),
+    areaBlue: document.getElementById("areaBlue"),
+    areaGreen: document.getElementById("areaGreen"),
+    lineBlue: document.getElementById("lineBlue"),
+    lineGreen: document.getElementById("lineGreen"),
+    guideLine: document.getElementById("guideLine"),
+    hoverDotBlue: document.getElementById("hoverDotBlue"),
+    hoverDotGreen: document.getElementById("hoverDotGreen"),
+    tooltip: document.getElementById("tooltip"),
+    chartWrap: document.getElementById("chartWrap")
+  };
+
+  let chartScale = null; // { xForYear, yForValue, plotW, plotH, margin }
+
+  // Ascending "nice" step candidates: 1 / 2 / 5 × 10^n (e.g. 1000, 2000, 5000,
+  // 10000, 20000, 50000, 100000, ... up into the millions/billions range).
+  function generateNiceSteps(){
+    const steps = [];
+    const multipliers = [1, 2, 5];
+    for (let e = 2; e <= 14; e++){
+      for (const m of multipliers){
+        steps.push(m * Math.pow(10, e));
+      }
+    }
+    return steps; // already ascending: 100,200,500,1000,2000,5000,10000,...
+  }
+  const NICE_STEPS = generateNiceSteps();
+
+  // Choose a clean Y-axis interval that yields ~5–8 visible grid levels for
+  // the given (headroom-inclusive) target maximum, preferring whichever
+  // qualifying step keeps the resulting headroom closest to ~10%.
+  function pickYAxisStep(targetMax){
+    const MIN_TICKS = 5, MAX_TICKS = 8;
+    let best = null, bestScore = Infinity;
+    let fallback = null;
+
+    for (const step of NICE_STEPS){
+      const ticks = Math.ceil(targetMax / step);
+      if (ticks >= MIN_TICKS && ticks <= MAX_TICKS){
+        const axisMax = step * ticks;
+        const overshoot = axisMax - targetMax; // distance beyond the headroom target
+        if (overshoot < bestScore){
+          bestScore = overshoot;
+          best = step;
+        }
+      }
+      if (fallback === null && ticks <= MAX_TICKS) fallback = step;
+    }
+
+    if (best !== null) return best;
+    return fallback !== null ? fallback : NICE_STEPS[NICE_STEPS.length - 1];
+  }
+
+  // Estimate a comfortable left margin (in SVG viewBox units) so the widest
+  // Y-axis label never clips or crowds the plot area, at any portfolio scale.
+  function estimateLeftMargin(labelText){
+    const approxCharWidth = 6.3; // tuned for the 10.5px tabular-num axis font
+    const width = 14 + labelText.length * approxCharWidth;
+    return Math.max(48, Math.min(104, Math.ceil(width)));
+  }
+
+  function buildScale(history){
+    const w = CONFIG.svgViewBox.w;
+    const h = CONFIG.svgViewBox.h;
+
+    const maxYear = history[history.length - 1].year;
+
+    // Y-axis is scaled to the portfolio (green) curve, per spec — the
+    // invested (blue) curve is always <= the portfolio curve for return >= 0.
+    const maxGreen = Math.max.apply(null, history.map(d => d.value));
+    const maxValueRaw = Math.max(maxGreen, CONFIG.yAxisBaseStep * 0.2);
+
+    // 8–12% visual headroom above the highest point of the green curve.
+    const HEADROOM = 1.10;
+    const targetMax = maxValueRaw * HEADROOM;
+
+    const yStep = pickYAxisStep(targetMax);
+    const ticks = Math.max(1, Math.ceil(targetMax / yStep));
+    const maxValue = yStep * ticks;
+
+    const marginLeft = estimateLeftMargin(formatAxisCHF(maxValue));
+    const margin = {
+      top: CONFIG.chartMargin.top,
+      right: CONFIG.chartMargin.right,
+      bottom: CONFIG.chartMargin.bottom,
+      left: marginLeft
+    };
+
+    const plotW = w - margin.left - margin.right;
+    const plotH = h - margin.top - margin.bottom;
+
+    function xForYear(year){
+      if (maxYear === 0) return margin.left;
+      return margin.left + (year / maxYear) * plotW;
+    }
+    function yForValue(value){
+      if (maxValue === 0) return margin.top + plotH;
+      return margin.top + plotH - (value / maxValue) * plotH;
+    }
+
+    return { xForYear, yForValue, plotW, plotH, margin, maxYear, maxValue, yStep, w, h };
+  }
+
+  function pathFromPoints(points){
+    if (!points.length) return "";
+    let d = "M " + points[0][0].toFixed(2) + " " + points[0][1].toFixed(2);
+    for (let i = 1; i < points.length; i++){
+      d += " L " + points[i][0].toFixed(2) + " " + points[i][1].toFixed(2);
+    }
+    return d;
+  }
+
+  function areaPathFromPoints(points, baselineY){
+    if (!points.length) return "";
+    let d = "M " + points[0][0].toFixed(2) + " " + baselineY.toFixed(2);
+    d += " L " + points[0][0].toFixed(2) + " " + points[0][1].toFixed(2);
+    for (let i = 1; i < points.length; i++){
+      d += " L " + points[i][0].toFixed(2) + " " + points[i][1].toFixed(2);
+    }
+    d += " L " + points[points.length - 1][0].toFixed(2) + " " + baselineY.toFixed(2) + " Z";
+    return d;
+  }
+
+  function renderGridAndAxes(scale){
+    const { margin, plotW, plotH, maxValue, yStep, maxYear, w, h, yForValue, xForYear } = scale;
+    let gridHTML = "";
+    let axisHTML = "";
+
+    // Y axis grid + labels (always starts at 0)
+    const ySteps = Math.round(maxValue / yStep);
+    for (let i = 0; i <= ySteps; i++){
+      const val = i * yStep;
+      const y = yForValue(val);
+      gridHTML += '<line class="grid-line" x1="' + margin.left + '" y1="' + y.toFixed(2) +
+        '" x2="' + (w - margin.right) + '" y2="' + y.toFixed(2) + '"></line>';
+      axisHTML += '<text class="axis-label" x="' + (margin.left - 8) + '" y="' + (y + 3.5).toFixed(2) +
+        '" text-anchor="end">' + formatAxisCHF(val) + '</text>';
+    }
+
+    // X axis — a subtle minor tick for every single year...
+    for (let yr = 0; yr <= maxYear; yr++){
+      const xTick = xForYear(yr);
+      gridHTML += '<line class="x-tick-minor" x1="' + xTick.toFixed(2) + '" y1="' + (h - margin.bottom).toFixed(2) +
+        '" x2="' + xTick.toFixed(2) + '" y2="' + (h - margin.bottom + 4).toFixed(2) + '"></line>';
+    }
+
+    // ...and a stacked two-line label ("N" / "année(s)") for ~5 major ticks.
+    let xTickStep = 5;
+    if (maxYear <= 10) xTickStep = 2;
+    if (maxYear <= 5) xTickStep = 1;
+    if (maxYear > 30) xTickStep = 10;
+    const line1Y = h - margin.bottom + 15;
+    for (let yr = 0; yr <= maxYear + 0.001; yr += xTickStep){
+      const x = xForYear(Math.min(yr, maxYear));
+      const parts = formatAxisYearParts(yr);
+      axisHTML += '<text class="axis-label x-axis-label" x="' + x.toFixed(2) + '" y="' + line1Y.toFixed(2) +
+        '" text-anchor="middle">' +
+        '<tspan x="' + x.toFixed(2) + '" dy="0">' + parts.num + '</tspan>' +
+        '<tspan x="' + x.toFixed(2) + '" dy="11" class="x-axis-unit">' + parts.unit + '</tspan>' +
+        '</text>';
+    }
+    // axis baseline
+    axisHTML += '<line class="axis-line" x1="' + margin.left + '" y1="' + (h - margin.bottom) +
+      '" x2="' + (w - margin.right) + '" y2="' + (h - margin.bottom) + '"></line>';
+
+    els.gridGroup.innerHTML = gridHTML;
+    els.axisGroup.innerHTML = axisHTML;
+  }
+
+  function renderChart(history, animateDraw){
+    const scale = buildScale(history);
+    chartScale = scale;
+    chartScale.history = history;
+
+    renderGridAndAxes(scale);
+
+    const greenPoints = history.map(d => [scale.xForYear(d.year), scale.yForValue(d.value)]);
+    const bluePoints = history.map(d => [scale.xForYear(d.year), scale.yForValue(d.invested)]);
+    const baselineY = scale.yForValue(0);
+
+    const dGreen = pathFromPoints(greenPoints);
+    const dBlue = pathFromPoints(bluePoints);
+    const dAreaGreen = areaPathFromPoints(greenPoints, baselineY);
+    const dAreaBlue = areaPathFromPoints(bluePoints, baselineY);
+
+    els.lineGreen.setAttribute("d", dGreen);
+    els.lineBlue.setAttribute("d", dBlue);
+    els.areaGreen.setAttribute("d", dAreaGreen);
+    els.areaBlue.setAttribute("d", dAreaBlue);
+
+    if (animateDraw && !prefersReducedMotion){
+      animateLineDraw(els.lineGreen, CONFIG.initialDrawMs);
+      animateLineDraw(els.lineBlue, CONFIG.initialDrawMs);
+      els.areaGreen.style.transition = "none";
+      els.areaBlue.style.transition = "none";
+      els.areaGreen.style.opacity = "0";
+      els.areaBlue.style.opacity = "0";
+      requestAnimationFrame(() => {
+        els.areaGreen.style.transition = "opacity " + CONFIG.initialDrawMs + "ms ease";
+        els.areaBlue.style.transition = "opacity " + CONFIG.initialDrawMs + "ms ease";
+        els.areaGreen.style.opacity = "";
+        els.areaBlue.style.opacity = "";
+      });
+    } else {
+      els.lineGreen.style.transition = "d " + CONFIG.animDurationMs + "ms ease";
+      els.lineBlue.style.transition = "d " + CONFIG.animDurationMs + "ms ease";
+    }
+  }
+
+  function animateLineDraw(pathEl, durationMs){
+    const length = pathEl.getTotalLength();
+    pathEl.style.transition = "none";
+    pathEl.style.strokeDasharray = length + " " + length;
+    pathEl.style.strokeDashoffset = length;
+    // force reflow
+    pathEl.getBoundingClientRect();
+    pathEl.style.transition = "stroke-dashoffset " + durationMs + "ms cubic-bezier(0.22, 0.61, 0.36, 1)";
+    pathEl.style.strokeDashoffset = "0";
+    setTimeout(() => {
+      pathEl.style.transition = "none";
+      pathEl.style.strokeDasharray = "";
+      pathEl.style.strokeDashoffset = "";
+    }, durationMs + 60);
+  }
+
+  /* ============================================================
+     6. CHART INTERACTION (pointer / touch / mouse)
+  ============================================================ */
+  function svgPointFromClientXY(clientX){
+    const rect = els.svg.getBoundingClientRect();
+    const relX = clientX - rect.left;
+    const scaleX = CONFIG.svgViewBox.w / rect.width;
+    return relX * scaleX;
+  }
+
+  function findClosestPeriod(svgX){
+    const history = chartScale.history;
+    let closest = history[0];
+    let closestDist = Infinity;
+    for (let i = 0; i < history.length; i++){
+      const x = chartScale.xForYear(history[i].year);
+      const dist = Math.abs(x - svgX);
+      if (dist < closestDist){
+        closestDist = dist;
+        closest = history[i];
+      }
+    }
+    return closest;
+  }
+
+  function showTooltipForPoint(point){
+    const scale = chartScale;
+    const x = scale.xForYear(point.year);
+    const yGreen = scale.yForValue(point.value);
+    const yBlue = scale.yForValue(point.invested);
+
+    els.guideLine.setAttribute("x1", x.toFixed(2));
+    els.guideLine.setAttribute("x2", x.toFixed(2));
+    els.guideLine.setAttribute("y1", scale.margin.top.toFixed(2));
+    els.guideLine.setAttribute("y2", (scale.h - scale.margin.bottom).toFixed(2));
+    els.guideLine.style.opacity = "1";
+
+    els.hoverDotGreen.setAttribute("transform", "translate(" + x.toFixed(2) + "," + yGreen.toFixed(2) + ")");
+    els.hoverDotBlue.setAttribute("transform", "translate(" + x.toFixed(2) + "," + yBlue.toFixed(2) + ")");
+    els.hoverDotGreen.style.opacity = "1";
+    els.hoverDotBlue.style.opacity = "1";
+
+    document.getElementById("ttYear").textContent = t("yearPrefix") + " " + Math.round(point.year);
+    document.getElementById("ttValue").textContent = formatCHF(point.value);
+    document.getElementById("ttInvested").textContent = formatCHF(point.invested);
+    document.getElementById("ttGains").textContent = formatCHF(point.gains);
+
+    // Position tooltip within chart wrap bounds, avoiding overflow.
+    const wrapRect = els.chartWrap.getBoundingClientRect();
+    const svgRect = els.svg.getBoundingClientRect();
+    const scaleXRatio = svgRect.width / CONFIG.svgViewBox.w;
+    const pxX = x * scaleXRatio;
+    const pxY = yGreen * (svgRect.height / CONFIG.svgViewBox.h);
+
+    const ttEl = els.tooltip;
+    ttEl.classList.add("visible");
+    const ttWidth = ttEl.offsetWidth || 180;
+    const ttHeight = ttEl.offsetHeight || 100;
+
+    let left = pxX + 14;
+    if (left + ttWidth > wrapRect.width) left = pxX - ttWidth - 14;
+    if (left < 4) left = 4;
+
+    let top = pxY - ttHeight - 14;
+    if (top < 4) top = pxY + 14;
+    if (top + ttHeight > wrapRect.height) top = Math.max(4, wrapRect.height - ttHeight - 4);
+
+    ttEl.style.transform = "translate(" + left.toFixed(1) + "px," + top.toFixed(1) + "px)";
+  }
+
+  function hideTooltip(){
+    els.tooltip.classList.remove("visible");
+    els.guideLine.style.opacity = "0";
+    els.hoverDotGreen.style.opacity = "0";
+    els.hoverDotBlue.style.opacity = "0";
+    state.hoverActive = false;
+  }
+
+  function handlePointerMove(clientX){
+    if (!chartScale) return;
+    state.hoverActive = true;
+    const svgX = svgPointFromClientXY(clientX);
+    const point = findClosestPeriod(svgX);
+    showTooltipForPoint(point);
+  }
+
+  function attachChartInteraction(){
+    const target = els.svg;
+
+    target.addEventListener("pointerdown", (e) => {
+      target.setPointerCapture && target.setPointerCapture(e.pointerId);
+      handlePointerMove(e.clientX);
+    });
+    target.addEventListener("pointermove", (e) => {
+      if (e.buttons === 0 && e.pointerType === "mouse"){
+        handlePointerMove(e.clientX);
+      } else if (e.pressure > 0 || e.pointerType !== "mouse"){
+        handlePointerMove(e.clientX);
+      } else {
+        handlePointerMove(e.clientX);
+      }
+    });
+    target.addEventListener("pointerleave", () => {
+      hideTooltip();
+    });
+    target.addEventListener("pointerup", () => {
+      // keep tooltip visible briefly after touch release for readability
+    });
+    target.addEventListener("mouseleave", hideTooltip);
+  }
+
+  /* ============================================================
+     7. UI UPDATES
+  ============================================================ */
+  function animateCountUp(el, from, to, durationMs, formatter){
+    if (prefersReducedMotion){
+      el.textContent = formatter(to);
+      return;
+    }
+    const start = performance.now();
+    function tick(now){
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = from + (to - from) * eased;
+      el.textContent = formatter(current);
+      if (t < 1) requestAnimationFrame(tick);
+      else el.textContent = formatter(to);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function updateSliderLabels(){
+    document.getElementById("capitalInitialValue").textContent = formatCHF(state.capitalInitial);
+    document.getElementById("contributionValue").textContent = formatCHF(state.contribution);
+    document.getElementById("durationValue").textContent = state.duration + " " + (state.duration === 1 ? t("yearSingular") : t("yearPlural"));
+    document.getElementById("annualReturnValue").textContent = formatPercent(state.annualReturn);
+  }
+
+  function updateSegmented(){
+    const isMonthly = state.frequency === "monthly";
+    document.getElementById("freqMonthly").setAttribute("aria-pressed", isMonthly ? "true" : "false");
+    document.getElementById("freqWeekly").setAttribute("aria-pressed", isMonthly ? "false" : "true");
+  }
+
+  // Reflects the current annualReturn value onto the strategy cards: a card is
+  // shown as "selected" only when its preset exactly matches the current
+  // return, so manually dragging the slider away from a preset cleanly
+  // deselects every card (no stale/incorrect highlighted state).
+  function updateStrategyCards(){
+    const cards = document.querySelectorAll(".strategy-card");
+    cards.forEach((card) => {
+      const key = card.getAttribute("data-strategy");
+      const preset = CONFIG.strategyReturns[key];
+      const isMatch = typeof preset === "number" && Math.abs(state.annualReturn - preset) < 0.001;
+      card.classList.toggle("selected", isMatch);
+      card.setAttribute("aria-pressed", isMatch ? "true" : "false");
+    });
+  }
+
+  let lastResult = { invested: state.capitalInitial, finalValue: state.capitalInitial, gains: 0, performance: 0 };
+
+  function updateResultAndCards(result, animate){
+    const resultValueEl = document.getElementById("resultValue");
+    const gainEl = document.getElementById("resultGain");
+    const perfEl = document.getElementById("resultPerf");
+    const gainPill = document.getElementById("resultGainPill");
+    const perfPill = document.getElementById("resultPerfPill");
+
+    const cardInvested = document.getElementById("cardInvested");
+    const cardFinal = document.getElementById("cardFinal");
+    const cardGains = document.getElementById("cardGains");
+    const cardPerf = document.getElementById("cardPerf");
+
+    const isPositive = result.gains >= 0;
+    gainPill.className = "pill " + (isPositive ? "gain-positive" : "gain-negative");
+    cardGains.className = "stat-value " + (isPositive ? "green" : "");
+    cardPerf.className = "stat-value " + (isPositive ? "green" : "");
+    if (!isPositive){
+      cardGains.style.color = "#C4382D";
+      cardPerf.style.color = "#C4382D";
+      perfPill.className = "pill gain-negative";
+    } else {
+      cardGains.style.color = "";
+      cardPerf.style.color = "";
+      perfPill.className = "pill gain-positive";
+    }
+
+    const dur = animate ? CONFIG.countUpMs : 0;
+    const from = animate ? lastResult : result;
+
+    animateCountUp(resultValueEl, from.finalValue, result.finalValue, dur, (v) => formatCHF(v));
+    animateCountUp(gainEl, from.gains, result.gains, dur, (v) => formatCHFSigned(v));
+    animateCountUp(perfEl, from.performance, result.performance, dur, (v) => formatPercent(v, true));
+
+    animateCountUp(cardInvested, from.invested, result.invested, dur, (v) => formatCHF(v));
+    animateCountUp(cardFinal, from.finalValue, result.finalValue, dur, (v) => formatCHF(v));
+    animateCountUp(cardGains, from.gains, result.gains, dur, (v) => formatCHFSigned(v));
+    animateCountUp(cardPerf, from.performance, result.performance, dur, (v) => formatPercent(v, true));
+
+    // Sync mobile sheet sticky bar
+    const sheetValue = document.getElementById("mobileSheetValue");
+    if (sheetValue) {
+      sheetValue.textContent = formatCHF(result.finalValue);
+    }
+
+    lastResult = result;
+  }
+
+  function render(animateInitial){
+    const history = runSimulation(
+      state.capitalInitial,
+      state.contribution,
+      state.frequency,
+      state.duration,
+      state.annualReturn
+    );
+    state.history = history;
+    const result = computeResult(history);
+
+    updateSliderLabels();
+    updateSegmented();
+    updateStrategyCards();
+
+    if (!animateInitial && !prefersReducedMotion){
+      // Smooth transient fade for control-driven updates.
+      els.chartWrap.style.transition = "opacity " + Math.round(CONFIG.animDurationMs * 0.4) + "ms ease";
+      els.chartWrap.style.opacity = "0.45";
+      window.setTimeout(() => {
+        renderChart(history, false);
+        els.chartWrap.style.opacity = "1";
+      }, Math.round(CONFIG.animDurationMs * 0.35));
+    } else {
+      renderChart(history, animateInitial);
+    }
+
+    updateResultAndCards(result, !state.isFirstRender || animateInitial);
+    hideTooltip();
+    state.isFirstRender = false;
+  }
+
+  /* ============================================================
+     8. PERSISTENCE (localStorage)
+  ============================================================ */
+  function saveState(){
+    try {
+      const toSave = {
+        capitalInitial: state.capitalInitial,
+        contribution: state.contribution,
+        frequency: state.frequency,
+        duration: state.duration,
+        annualReturn: state.annualReturn
+      };
+      window.localStorage.setItem(CONFIG.storageKey, JSON.stringify(toSave));
+    } catch (e) {
+      // localStorage unavailable — fail silently, app remains functional.
+    }
+  }
+
+  function loadState(){
+    try {
+      const raw = window.localStorage.getItem(CONFIG.storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed.capitalInitial === "number") {
+        // Clamp any previously saved value to the current slider range
+        // (e.g. an older session saved before the max was lowered).
+        state.capitalInitial = Math.min(Math.max(parsed.capitalInitial, 0), 250000);
+      }
+      if (typeof parsed.contribution === "number") state.contribution = parsed.contribution;
+      if (parsed.frequency === "monthly" || parsed.frequency === "weekly") state.frequency = parsed.frequency;
+      if (typeof parsed.duration === "number") state.duration = parsed.duration;
+      if (typeof parsed.annualReturn === "number") state.annualReturn = parsed.annualReturn;
+    } catch (e) {
+      // Corrupt or unavailable storage — fall back to defaults silently.
+    }
+  }
+
+  function resetToDefaults(){
+    state.capitalInitial = CONFIG.defaults.capitalInitial;
+    state.contribution = CONFIG.defaults.contribution;
+    state.frequency = CONFIG.defaults.frequency;
+    state.duration = CONFIG.defaults.duration;
+    state.annualReturn = CONFIG.defaults.annualReturn;
+
+    document.getElementById("capitalInitial").value = state.capitalInitial;
+    document.getElementById("contribution").value = state.contribution;
+    document.getElementById("duration").value = state.duration;
+    document.getElementById("annualReturn").value = state.annualReturn;
+
+    saveState();
+    render(false);
+  }
+
+  /* ============================================================
+     9. EVENT LISTENERS
+  ============================================================ */
+  /* ============================================================
+     MOBILE BOTTOM SHEET
+  ============================================================ */
+  function initMobileSheet(){
+    const sheet = document.getElementById("mobileSheet");
+    const panel = document.getElementById("mobileSheetPanel");
+    const overlay = document.getElementById("mobileSheetOverlay");
+    const btn = document.getElementById("mobileSheetBtn");
+    const close = document.getElementById("mobileSheetClose");
+    if (!sheet || !panel) return;
+
+    // Clone strategy and controls into the sheet on mobile
+    const strategySource = document.querySelector(".strategies-card");
+    const controlsSource = document.querySelector(".controls-card");
+    const strategyTarget = document.getElementById("mobileSheetStrategy");
+    const controlsTarget = document.getElementById("mobileSheetControls");
+
+    if (strategySource && strategyTarget && !strategyTarget.hasChildNodes()) {
+      const clone = strategySource.cloneNode(true);
+      clone.classList.remove("desktop-only");
+      strategyTarget.appendChild(clone);
+      // Re-attach listeners to cloned strategy cards
+      const clonedCards = strategyTarget.querySelectorAll(".strategy-card");
+      clonedCards.forEach((card) => {
+        card.addEventListener("click", () => {
+          const key = card.getAttribute("data-strategy");
+          const preset = CONFIG.strategyReturns[key];
+          if (typeof preset !== "number") return;
+          state.annualReturn = preset;
+          document.getElementById("annualReturn").value = preset;
+          document.getElementById("annualReturnValue").textContent = formatPercent(preset);
+          render(false);
+          saveState();
+          closeSheet();
+        });
+      });
+    }
+    if (controlsSource && controlsTarget && !controlsTarget.hasChildNodes()) {
+      const cClone = controlsSource.cloneNode(true);
+      cClone.classList.remove("desktop-only");
+      controlsTarget.appendChild(cClone);
+      // Re-attach listeners to cloned controls
+      const cCapital = controlsTarget.querySelector("#capitalInitial");
+      const cContribution = controlsTarget.querySelector("#contribution");
+      const cDuration = controlsTarget.querySelector("#duration");
+      const cReturn = controlsTarget.querySelector("#annualReturn");
+      const cMonthly = controlsTarget.querySelector("#freqMonthly");
+      const cWeekly = controlsTarget.querySelector("#freqWeekly");
+      const cReset = controlsTarget.querySelector("#resetBtn");
+
+      if (cCapital) cCapital.addEventListener("input", () => {
+        state.capitalInitial = parseFloat(cCapital.value);
+        document.getElementById("capitalInitial").value = state.capitalInitial;
+        document.getElementById("capitalInitialValue").textContent = formatCHF(state.capitalInitial);
+        render(false); saveState();
+      });
+      if (cContribution) cContribution.addEventListener("input", () => {
+        state.contribution = parseFloat(cContribution.value);
+        document.getElementById("contribution").value = state.contribution;
+        document.getElementById("contributionValue").textContent = formatCHF(state.contribution);
+        render(false); saveState();
+      });
+      if (cDuration) cDuration.addEventListener("input", () => {
+        state.duration = parseInt(cDuration.value, 10);
+        document.getElementById("duration").value = state.duration;
+        document.getElementById("durationValue").textContent = state.duration + " " + (state.duration === 1 ? t("yearSingular") : t("yearPlural"));
+        render(false); saveState();
+      });
+      if (cReturn) cReturn.addEventListener("input", () => {
+        state.annualReturn = parseFloat(cReturn.value);
+        document.getElementById("annualReturn").value = state.annualReturn;
+        document.getElementById("annualReturnValue").textContent = formatPercent(state.annualReturn);
+        render(false); saveState();
+      });
+      if (cMonthly) cMonthly.addEventListener("click", () => {
+        if (state.frequency === "monthly") return;
+        state.frequency = "monthly";
+        updateSegmented();
+        render(false); saveState();
+      });
+      if (cWeekly) cWeekly.addEventListener("click", () => {
+        if (state.frequency === "weekly") return;
+        state.frequency = "weekly";
+        updateSegmented();
+        render(false); saveState();
+      });
+      if (cReset) cReset.addEventListener("click", () => {
+        resetToDefaults();
+        closeSheet();
+      });
+    }
+
+    function openSheet(){
+      panel.classList.add("open");
+      overlay.classList.add("open");
+      document.body.classList.add("sheet-open");
+      panel.setAttribute("aria-hidden", "false");
+    }
+    function closeSheet(){
+      panel.classList.remove("open");
+      overlay.classList.remove("open");
+      document.body.classList.remove("sheet-open");
+      panel.setAttribute("aria-hidden", "true");
+    }
+
+    btn.addEventListener("click", openSheet);
+    close.addEventListener("click", closeSheet);
+    overlay.addEventListener("click", closeSheet);
+    // Swipe down to close
+    let startY = 0;
+    panel.addEventListener("touchstart", (e) => { startY = e.touches[0].clientY; }, { passive: true });
+    panel.addEventListener("touchmove", (e) => {
+      const y = e.touches[0].clientY;
+      if (y - startY > 60 && panel.scrollTop <= 0) {
+        closeSheet();
+      }
+    }, { passive: true });
+  }
+
+  /* ============================================================
+     LANGUAGE SWITCHER LISTENERS
+  ============================================================ */
+  function attachLanguageListeners(){
+    document.querySelectorAll(".lang-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const lang = btn.getAttribute("data-lang");
+        if (lang && lang !== currentLang) {
+          setLanguage(lang);
+          // Update mobile sheet button text
+          const sheetBtn = document.getElementById("mobileSheetBtn");
+          if (sheetBtn) sheetBtn.textContent = t("sheetBtn");
+        }
+      });
+    });
+  }
+
+  function attachControlListeners(){
+    const capitalInitialInput = document.getElementById("capitalInitial");
+    const contributionInput = document.getElementById("contribution");
+    const durationInput = document.getElementById("duration");
+    const annualReturnInput = document.getElementById("annualReturn");
+
+    capitalInitialInput.addEventListener("input", () => {
+      state.capitalInitial = parseFloat(capitalInitialInput.value);
+      document.getElementById("capitalInitialValue").textContent = formatCHF(state.capitalInitial);
+      render(false);
+      saveState();
+    });
+
+    contributionInput.addEventListener("input", () => {
+      state.contribution = parseFloat(contributionInput.value);
+      document.getElementById("contributionValue").textContent = formatCHF(state.contribution);
+      render(false);
+      saveState();
+    });
+
+    durationInput.addEventListener("input", () => {
+      state.duration = parseInt(durationInput.value, 10);
+      document.getElementById("durationValue").textContent = state.duration + (state.duration === 1 ? " an" : " ans");
+      render(false);
+      saveState();
+    });
+
+    annualReturnInput.addEventListener("input", () => {
+      state.annualReturn = parseFloat(annualReturnInput.value);
+      document.getElementById("annualReturnValue").textContent = formatPercent(state.annualReturn);
+      render(false);
+      saveState();
+    });
+
+    document.getElementById("freqMonthly").addEventListener("click", () => {
+      if (state.frequency === "monthly") return;
+      state.frequency = "monthly";
+      updateSegmented();
+      render(false);
+      saveState();
+    });
+    document.getElementById("freqWeekly").addEventListener("click", () => {
+      if (state.frequency === "weekly") return;
+      state.frequency = "weekly";
+      updateSegmented();
+      render(false);
+      saveState();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", resetToDefaults);
+  }
+
+  // Each strategy card applies a preset "Rendement annuel moyen" and re-runs
+  // the simulation — same effect as dragging the return slider to that value.
+  function attachStrategyListeners(){
+    const cards = document.querySelectorAll(".strategy-card");
+    cards.forEach((card) => {
+      card.addEventListener("click", () => {
+        const key = card.getAttribute("data-strategy");
+        const preset = CONFIG.strategyReturns[key];
+        if (typeof preset !== "number") return;
+        state.annualReturn = preset;
+        document.getElementById("annualReturn").value = preset;
+        document.getElementById("annualReturnValue").textContent = formatPercent(preset);
+        render(false);
+        saveState();
+      });
+    });
+  }
+
+  // Reveals each strategy's description in a shared hint area on hover
+  // (mouse/trackpad) or focus (keyboard/touch), instead of showing all
+  // descriptions inline — keeps the four cards compact on a single row.
+  const STRATEGY_HINT_DEFAULT = "Survolez une stratégie pour découvrir sa description.";
+
+  function attachStrategyHoverListeners(){
+    const cards = document.querySelectorAll(".strategy-card");
+    const hintEl = document.getElementById("strategyHint");
+    if (!hintEl) return;
+
+    function showHint(card){
+      const descEl = card.querySelector(".strategy-description");
+      const text = descEl ? descEl.textContent.trim() : "";
+      if (!text) return;
+      hintEl.textContent = text;
+      hintEl.classList.add("active");
+    }
+    function resetHint(){
+      hintEl.textContent = STRATEGY_HINT_DEFAULT;
+      hintEl.classList.remove("active");
+    }
+
+    cards.forEach((card) => {
+      card.addEventListener("pointerenter", () => showHint(card));
+      card.addEventListener("pointerleave", resetHint);
+      card.addEventListener("focus", () => showHint(card));
+      card.addEventListener("blur", resetHint);
+    });
+  }
+
+  function attachResizeListener(){
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (state.history.length){
+          renderChart(state.history, false);
+        }
+      }, 150);
+    });
+  }
+
+  /* ============================================================
+     10. INITIALIZATION
+  ============================================================ */
+  function initManifest(){
+    const manifest = {
+      name: t("appTitle"),
+      short_name: "Investissement",
+      description: "Visualisez l'impact des intérêts composés sur votre patrimoine.",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#F6F4FE",
+      theme_color: "#F6F4FE",
+      icons: []
+    };
+    try {
+      const blob = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(manifest));
+      document.getElementById("manifest-link").setAttribute("href", blob);
+    } catch (e) {
+      // Manifest embedding unsupported in this context — app remains fully usable.
+    }
+  }
+
+  function initServiceWorker(){
+    // Note: service workers cannot register from blob:/data: Artifact contexts.
+    // This structure is ready to activate unchanged once deployed as index.html
+    // on a real origin (e.g. GitHub Pages) with an accompanying sw.js file.
+    if ("serviceWorker" in navigator && window.location.protocol.indexOf("http") === 0){
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {
+          // No sw.js present in this single-file context — expected, non-fatal.
+        });
+      });
+    }
+  }
+
+  function inputsFromState(){
+    document.getElementById("capitalInitial").value = state.capitalInitial;
+    document.getElementById("contribution").value = state.contribution;
+    document.getElementById("duration").value = state.duration;
+    document.getElementById("annualReturn").value = state.annualReturn;
+  }
+
+  function init(){
+    loadLanguage();
+    initManifest();
+    loadState();
+    inputsFromState();
+    applyLanguage();
+    attachControlListeners();
+    attachStrategyListeners();
+    attachStrategyHoverListeners();
+    attachChartInteraction();
+    attachResizeListener();
+    attachLanguageListeners();
+    initMobileSheet();
+    render(true);
+    initServiceWorker();
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+
+</body>
+</html>
